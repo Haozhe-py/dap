@@ -2,7 +2,7 @@ import asyncio
 import os
 import re
 import stat as _stat
-from typing import List, Optional
+from typing import List
 from subprocess import run
 import pwd
 import grp
