@@ -11,9 +11,9 @@ def json2rule(json_path:str)->List[match.MatchRule]:
         with open(json_path, 'r') as f:
             rules = json.load(f)
         log('ANALYZE', 'Reading configuration file')
-        assert isinstance(rules, list), 'Invalid configuration file. (wrong type)'
+        assert isinstance(rules, list), f'Invalid configuration file. (wrong type: {type(rules).__name__})'
         for r in rules:
-            assert isinstance(rules, dict), 'Invalid rule in configuration file. (wrong type)'
+            assert isinstance(r, dict), f'Invalid rule in configuration file. (wrong type: {type(r).__name__})'
             try:
                 cur_rule = match.MatchRule(**r)
                 results.append(cur_rule)
@@ -21,6 +21,6 @@ def json2rule(json_path:str)->List[match.MatchRule]:
             except:
                 raise RuntimeError('Unexpected arguments in rule(s).')
 
-        return rules
+        return results
     except Exception as e:
         log('ANALYZE', f'Cannot analyze configration file: {e}', type='error')

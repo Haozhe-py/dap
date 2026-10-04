@@ -45,15 +45,15 @@ def add_group(parent_node, file_list:List[str], rule:MatchRule):
         node.set('path', file)
 
     rule_node = ET.SubElement(group, 'rule')
-    for attr in ('fmt', 'user', 'group', 'perm', 'regex_p_file', 'regex_p_path'):
+    for attr in ('fmt', 'user', 'group', 'perm', 'regex_p_file', 'regex_p_dir'):
         node = ET.SubElement(rule_node, attr)
-        node.text = rule.__getattribute__(attr)
+        node.text = str(rule.__getattribute__(attr))
 
 async def main(args):
     if os.name != 'posix':
         log('LAUNCH', 'DAP only supports POSIX operating systems! ', type='error')
     if os.geteuid()!=0:
-        log('LAUNCH', 'Running as non-root user. Access to certain files or directories may be denied.')
+        log('LAUNCH', 'Running as non-root user. Access to certain files or directories may be denied.', type='warn')
 
     config_path:str  = args.config
     target_dirs:list = args.target_dirs
@@ -68,8 +68,8 @@ async def main(args):
             result += await match(dir, rule=rule)
         return result
     async_tasks = [asyncio.create_task(scan_rule(rule)) for rule in rules]
-    for task in async_tasks:
-        add_group(root, await task)
+    for idx, task in enumerate(async_tasks):
+        add_group(root, await task, rules[idx])
 
     tree = ET.ElementTree(root)
     ET.indent(tree, space='  ')
@@ -77,11 +77,12 @@ async def main(args):
     log('WRITE', f'Writing to {output_path}')
     try:
         tree.write(output_path, encoding='utf-8', xml_declaration=True)
+        log('WRITE', f'File {output_path} generated successfully')
     except:
         log('WRITE', f'Failed writing to {output_path}', type='warn')
         raise
 
 
 if __name__ == '__main__':
-    args = parse_args(sys.argv)
+    args = parse_args()
     exit(asyncio.run(main(args)))

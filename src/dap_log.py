@@ -16,8 +16,7 @@ def log(process:str, info:str, type:Literal['normal', 'warn', 'error'] = 'normal
     if type=='normal':
         print(log_info)
     elif type=='warn':
-        print(f'\033[33m{log_info}\033[0m')
-        warnings.warn(info, RuntimeWarning)
+        print(f'\033[33m{log_info}\033[0m', file=sys.stderr)
     elif type=='error':
         print(f'\033[31m{log_info}\033[0m', file=sys.stderr)
         raise RuntimeError(info)
