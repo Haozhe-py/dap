@@ -8,12 +8,7 @@ This project is a pipeline for managing digital assets, including images, videos
 git clone https://github.com/Haozhe-py/dap.git
 ```
 
-2. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the pipeline
+2. Run the pipeline
 ```bash
 sudo python dap/src/main.py --config <PATH-TO-CONFIG-FILE> --target-dirs <PATH-TO-TARGET-DIRECTORIES> --output <PATH-TO-OUTPUT-FILE>
 ```
