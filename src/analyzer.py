@@ -1,17 +1,25 @@
 import json
-from typing import List
+from typing import List, Tuple
 
-import match
 from dap_log import log
+import match
 
-
-def json2rule(json_path:str)->List[match.MatchRule]:
-    results = []
+def json_analyzer(json_path:str)->Tuple[List[str], List[match.MatchRule]]:
+    tar_dirs, results = [], []
     try:
         with open(json_path, 'r') as f:
-            rules = json.load(f)
+            config = json.load(f)
         log('ANALYZE', 'Reading configuration file')
-        assert isinstance(rules, list), f'Invalid configuration file. (wrong type: {type(rules).__name__})'
+        if isinstance(config, list):
+            raise TypeError('The format of configration file has changed. The old one is no longer supported. ')
+        
+        assert isinstance(config, dict), f'Invalid configration file. (wrong type, expected `dict`, got {type(config).__name__})'
+
+        tar_dirs = config.get('target_dirs', None)
+        rules = config.get('rules', match.DEFAULT_RULES)
+
+        assert isinstance(tar_dirs, list) and isinstance(rules, list), 'Expected key `target_dirs` and `rules` not found or invalid in configuration file.'
+
         for r in rules:
             assert isinstance(r, dict), f'Invalid rule in configuration file. (wrong type: {type(r).__name__})'
             try:
@@ -21,6 +29,7 @@ def json2rule(json_path:str)->List[match.MatchRule]:
             except:
                 raise RuntimeError('Unexpected arguments in rule(s).')
 
-        return results
+        return tar_dirs, results
+
     except Exception as e:
         log('ANALYZE', f'Cannot analyze configration file: {e}', type='error')

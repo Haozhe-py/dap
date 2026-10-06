@@ -1,88 +1,96 @@
-import asyncio
+from io import TextIOWrapper
 import os
-import argparse
 import sys
+import argparse
+import time
 from typing import List
-import xml.etree.ElementTree as ET
 
-from analyzer import json2rule
-from match import MatchRule, match
+from analyzer import json_analyzer
 from dap_log import log
-
+from match import MatchRule, FileInfo
+from scan import scan
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog='dap',
-        description='Digital Asset Pipeline - scan target directories and build a manifest.',
+        description='Digital Asset Pipeline - Scan target directories and build a manifest.'
     )
     parser.add_argument(
         '--config', '-c',
         required=True,
-        help='Path to the config.json file (index rules).',
-    )
-    parser.add_argument(
-        '--target-dirs', '-t',
-        required=True,
-        nargs='+',
-        help='One or more directories to scan.',
+        help='Path to the `config.json` file.'
     )
     parser.add_argument(
         '--output', '-o',
-        default='manifest.xml',
-        help='Output manifest file path (default: manifest.xml).',
+        default='./manifest',
+        help='Output manifest directory path (default: ./manifest).'
     )
     return parser.parse_args(argv)
 
-def add_group(parent_node, file_list:List[str], rule:MatchRule):
-    name=rule.name
+def match_launcher(rules:List[MatchRule], file_list:TextIOWrapper, output_dir:str, eof_tag:str='__EOF__', max_fork_attempt:int=3)->None:
+    eof_tag = eof_tag.strip()
+    
+    for rule in rules:
+        pid = os.fork()
+        if pid<0:
+            log('MATCH', 'Error: os.fork() failed', type='warn')
+            for t in range(max_fork_attempt-1):
+                time.sleep(0.1)
+                pid = os.fork()
+                if pid >= 0:
+                    break
+                else:
+                    log('MATCH', 'Error: os.fork() failed', type='warn' if t != max_fork_attempt-2 else 'error')
+                
 
-    group = ET.SubElement(parent_node, 'group')
-    group.set('name', name)
+        if pid==0:  # subprocess, start matching
+            while True:
+                line = file_list.readline()
+                if not line:
+                    time.sleep(0.02)
+                    continue
+                if line.strip() == eof_tag:
+                    break
+                else:
+                    try:
+                        file = FileInfo(*line.rsplit(maxsplit=3))
+                    except:
+                        log('MATCH', 'Invalid line of FileInfo, skipping', type='warn')
+                        continue
+                    rule.match([file])
+            rule.write(output_dir=output_dir)
+            break
+        else:
+            continue
 
-    files = ET.SubElement(group, 'files')
-    for file in file_list:
-        node = ET.SubElement(files, 'file')
-        node.set('path', file)
-
-    rule_node = ET.SubElement(group, 'rule')
-    for attr in ('fmt', 'user', 'group', 'perm', 'regex_p_file', 'regex_p_dir'):
-        node = ET.SubElement(rule_node, attr)
-        node.text = str(rule.__getattribute__(attr))
-
-async def main(args):
+def main(args):
     if os.name != 'posix':
         log('LAUNCH', 'DAP only supports POSIX operating systems! ', type='error')
     if os.geteuid()!=0:
         log('LAUNCH', 'Running as non-root user. Access to certain files or directories may be denied.', type='warn')
 
-    config_path:str  = args.config
-    target_dirs:list = args.target_dirs
-    output_path:str  = args.output
+    config_path:str = args.config
+    output_path:str = args.output
 
-    rules:list = json2rule(config_path)
-    root = ET.Element('manifest', version='1.0')
+    target_dirs, rules = json_analyzer(config_path)
 
-    async def scan_rule(rule:MatchRule):
-        result = []
+    r, w = os.pipe
+    pid = os.fork()
+    if pid<0:
+        log('LAUNCH', 'Error: os.fork() failed', type='error')
+    if pid==0:
+        os.close(r)
+        writable = os.fdopen(w)
         for dir in target_dirs:
-            result += await match(dir, rule=rule)
-        return result
-    async_tasks = [asyncio.create_task(scan_rule(rule)) for rule in rules]
-    for idx, task in enumerate(async_tasks):
-        add_group(root, await task, rules[idx])
+            scan(dir, writable=writable)
+        writable.write('__EOF__')
+    else:
+        os.close(w)
+        readable = os.fdopen(r)
+        match_launcher(rules, readable, output_path, eof_tag='__EOF__')
 
-    tree = ET.ElementTree(root)
-    ET.indent(tree, space='  ')
-
-    log('WRITE', f'Writing to {output_path}')
-    try:
-        tree.write(output_path, encoding='utf-8', xml_declaration=True)
-        log('WRITE', f'File {output_path} generated successfully')
-    except:
-        log('WRITE', f'Failed writing to {output_path}', type='warn')
-        raise
-
+    log('END', 'Operations completed successfully')
 
 if __name__ == '__main__':
     args = parse_args()
-    exit(asyncio.run(main(args)))
+    main(args)

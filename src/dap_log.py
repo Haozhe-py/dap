@@ -1,7 +1,6 @@
 import sys
 import time
 from typing import Literal
-import warnings
 
 mapping = {
     'normal':'INFO',
