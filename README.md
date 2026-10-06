@@ -1,3 +1,5 @@
+English | [中文](README_ZH.md)
+
 # Digital Asset Pipeline (DAP)
 
 This project is a pipeline for organizing and managing digital assets. It allows users to specify target directories and rules for filtering files based on various attributes such as format, user, group, permissions, and regex patterns for file names and paths. Note that **Python 3.11 or higher** is required.
