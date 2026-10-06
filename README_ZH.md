@@ -58,4 +58,5 @@ sudo python dap/src/main.py --config PATH_TO_CONFIG_FILE --output PATH_TO_OUTPUT
 - `"perm"`: `"000"` 表示不按权限过滤
 - `"regex_p_file"`: `".*"` 表示不按文件名过滤
 - `"regex_p_path"`: `".*"` 表示不按路径过滤
+
 此项目提供了一组默认规则。如果您希望使用默认规则，可以从配置文件中删除 `rules` 部分。默认规则定义在 `src/match.py` 中。
