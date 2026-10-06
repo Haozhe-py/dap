@@ -54,7 +54,7 @@ Note that when specifying the `rules` section, you can use the following values 
 - `"user"`: `""` or `null` means no filtering by user
 - `"group"`: `""` or `null` means no filtering by group
 - `"perm"`: `"000"` means no filtering by permission
-- `"regex_p_file"`: `.*` means no filtering by file name
-- `"regex_p_path"`: `.*` means no filtering by path
+- `"regex_p_file"`: `".*"` means no filtering by file name
+- `"regex_p_path"`: `".*"` means no filtering by path
 
 A default set of rules is provided. If you want to use the default rules, you can remove the `rules` section from the config file. The default rules are defined in `src/match.py`.
