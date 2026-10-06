@@ -37,22 +37,26 @@ class MatchRule:
         regex_p_path:str, 
         file_group_name:str
     ) -> None:
-        self.fmt, self.user, self.group, self.perm, self.regex_p_file, self.regex_p_dir = \
+        self.fmt, self.user, self.group, self.perm, self.regex_p_file, self.regex_p_path = \
             fmt, user.strip(), group.strip(), list(map(int, str(perm))), regex_p_file, regex_p_path
         self.name = file_group_name
+        self.file_count:int = 0
 
         if isinstance(self.fmt, str):
             self.fmt = [self.fmt.lower().strip()]
         elif isinstance(self.fmt, list) or isinstance(self.fmt, tuple):
             self.fmt = [m.lower().strip() for m in self.fmt]
 
+        # XML
         self.xml = ET.Element('manifest', version='1.0')
+        rule = ET.SubElement(self.xml, 'rules')
         self.xmlgroup = ET.SubElement(self.xml, 'group')
         self.xmlgroup.set('name', self.name)
         self.xmlfiles = ET.SubElement(self.xmlgroup, 'files')
-
-        self.file_count:int = 0
-
+        for attr in ('fmt', 'user', 'group', 'perm', 'regex_p_file', 'regex_p_path'):
+            node = ET.SubElement(rule, attr)
+            node.text = str(self.__getattribute__(attr))
+        
     def match(self, files:List[FileInfo])->None:
         # Filter by user / group
         if not self.user and self.group:
@@ -75,11 +79,11 @@ class MatchRule:
         files = [f for f in files 
                  if _check_perm(f.perm, self.perm)
                  and re.search(self.regex_p_file, os.path.split(f.file_path)[-1])
-                 and re.search(self.regex_p_dir, os.path.split(f.file_path)[0])
+                 and re.search(self.regex_p_path, os.path.split(f.file_path)[0])
                 ]
 
         self.file_count += len(files)
-        log(f'Mapped {len(files)} file(s) to {self.name}')
+        log('MATCH', f'Mapped {len(files)} file(s) to {self.name}')
         for file in files:
             et = ET.SubElement(self.xmlfiles, 'file')
             et.text = file.file_path
@@ -91,7 +95,7 @@ class MatchRule:
         tree = ET.ElementTree(self.xml)
         ET.indent(tree, space='    ')
 
-        output_path = os.path.join(output_dir, self.name)
+        output_path = os.path.join(output_dir, f'{self.name}.xml')
         log('WRITE', f'Writing to {output_path}')
         try:
             tree.write(output_path, encoding=encoding, xml_declaration=xml_declaration)

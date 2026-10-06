@@ -5,7 +5,7 @@ import pwd
 
 from dap_log import log
 
-def scan(dir_path:str, writable:TextIOWrapper)->None:
+def scan(dir_path:str, writable:TextIOWrapper)->int:
     log('SCAN', f'Scanning {dir_path}')
     
     dir_list = []
@@ -40,4 +40,5 @@ def scan(dir_path:str, writable:TextIOWrapper)->None:
     log('SCAN', f'Got {file_count} files and {len(dir_list)} directories in {dir_path}')
 
     for dir in dir_list:
-        scan(dir, writable)
+        file_count += scan(dir, writable)
+    return file_count
