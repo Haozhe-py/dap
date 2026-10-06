@@ -105,15 +105,7 @@ def match_launcher(rules: List[MatchRule], file_list: TextIOWrapper,
         if reached_eof:
             break
 
-def main(args):
-    if os.name != 'posix':
-        log('LAUNCH', 'DAP only supports POSIX operating systems! ', type='error')
-    if os.geteuid()!=0:
-        log('LAUNCH', 'Running as non-root user. Access to certain files or directories may be denied.', type='warn')
-
-    config_path:str = args.config
-    output_path:str = args.output
-
+def dap(config_path:str, output_path:str)->None:
     target_dirs, rules = json_analyzer(config_path)
 
     r, w = os.pipe()
@@ -141,9 +133,21 @@ def main(args):
                 log('WAIT', f"Subprocess {pid} done, status={status}")
             except ChildProcessError:
                 break
-
     log('END', 'Operations completed successfully')
+
+def main(args)->int:
+    if os.name != 'posix':
+        log('LAUNCH', 'DAP only supports POSIX operating systems! ', type='error')
+    if os.geteuid()!=0:
+        log('LAUNCH', 'Running as non-root user. Access to certain files or directories may be denied.', type='warn')
+    try:
+        dap(args.config, args.output)
+        return 0
+    except:
+        return 1
+
+__all__ = ['dap']
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args)
+    exit(main(args))
